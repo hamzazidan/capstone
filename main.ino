@@ -15,7 +15,6 @@
 #include <HTTPClient.h>
 #include <UrlEncode.h>
 #include <DHT11.h>
-#include "DHT.h"
 #define DHTPIN 5
 
 DHT11 dht11(4);
