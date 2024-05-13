@@ -15,20 +15,25 @@
 #include <HTTPClient.h>
 #include <UrlEncode.h>
 #include <DHT11.h>
-DHT11 dht11(4);
+#include "DHT.h"
+#define DHTPIN 5
 
-const char* ssid = "Arise!";
-const char* password = "Shana1@Zidan2_0607";
+DHT11 dht11(4);
+DHT11 outside_temp(5);
+const char* ssid = "Hamza";
+const char* password = "012345678";
 // +international_country_code + phone number
 // Portugal +351, example: +351912345678
-String phoneNumber = "+201097928267";
-String apiKey = "2631897";
+String phoneNumber = "+201095965373";
+String apiKey = "2165285";
 
 Servo s1;
-int val1 = 0;
+// int val1 = 0;
+int gas_value = 0; 
 #define Motionpin 15
-#define Fanpin 18
+#define Fanpin 14
 #define Servopin 19
+#define gaspin 35
 
 
 
@@ -60,6 +65,7 @@ void sendMessage(String message){
 void setup() {
   Serial.begin(115200); // baud 
   pinMode(Fanpin,OUTPUT);
+  pinMode(gaspin,INPUT);
   s1.attach(Servopin, 1000, 2000);
   WiFi.begin(ssid, password);
   Serial.println("Connecting");
@@ -77,18 +83,32 @@ void setup() {
 
 void loop() {
   int temperature = dht11.readTemperature();
-  sendMessage("Here's the temperature inside your building");
+  int out_temperature = outside_temp.readTemperature();
+  sendMessage("Here's the temperature inside your building: ");
+  Serial.print("Temperature reading inside the building: ");
   Serial.println(temperature);
-  if(digitalRead(Motionpin)==HIGH) {
+  Serial.print("Temperature outside the buidling: ");
+  Serial.println(out_temperature);
+  sendMessage(String(temperature));
+  if(digitalRead(Motionpin) == HIGH) {
     Serial.println("Movement detected.");
-    s1.write(90);
+    s1.write(180);
     sendMessage("Movement detected.");
   } else {
     Serial.println("Did not detect movement.");
     s1.write(0);
   }
-  digitalWrite(Fanpin, HIGH);
+  gas_value = analogRead(gaspin);
+  Serial.print("Gas Sensor reading: ");
+  Serial.println(gas_value);
   delay(2000);
   s1.write(0);
-  sendMessage(String(temperature));
+  if (gas_value > 350)
+  {
+    digitalWrite(Fanpin,HIGH);
+    sendMessage("The percentage of the gases was exceeded inside the building");
+  }
+ else{
+    digitalWrite(Fanpin,LOW);
+  }
 }
