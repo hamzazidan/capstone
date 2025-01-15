@@ -1,93 +1,99 @@
-// Include the necessary libraries
-#include <MQUnifiedsensor.h>
-#include <DFRobot_DHT11.h>
+#include <DHT.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP280.h>
+#include <Adafruit_Sensor.h> // This includes the Adafruit_Sensor-master library
+#include <Adafruit_BMP280.h>  // BMP280 library for the pressure sensor
 
-// Hardware-related macros
-#define Board "Arduino UNO"
-#define Pin A0  // Analog input pin
-#define Type "MQ-9"
-#define Voltage_Resolution 5
-#define ADC_Bit_Resolution 10  // For Arduino UNO/MEGA/NANO
-#define RatioMQ9CleanAir 9.6  // RS/R0 ratio in clean air
+// Define pin connections
+const int mq2Pin = A0;   // Analog pin for MQ2 sensor (CO detection)
+const int mq9Pin = A1;   // Analog pin for MQ9 sensor (CO detection)
+const int ledPin1 = 12;  // Digital pin for the first LED
 
-// DHT11 pin definition
-#define DHT11_PIN 10
+// DHT11 sensor configuration
+#define DHTPIN 2          // Pin where the DHT11 data pin is connected
+#define DHTTYPE DHT11     // DHT11 sensor type
 
-// Sensor objects
-DFRobot_DHT11 DHT;
-MQUnifiedsensor MQ9(Board, Voltage_Resolution, ADC_Bit_Resolution, Pin, Type);
-Adafruit_BMP280 bmp;
+DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
+
+// BMP280 sensor configuration
+Adafruit_BMP280 bmp;  // Create an instance of the BMP280 sensor
+
+// Define a tolerance level for comparison between MQ2 and MQ9
+const int tolerance = 20;  // Adjust tolerance value based on sensor calibration
 
 void setup() {
-  // Initialize serial communication
+  // Start serial communication for debugging
   Serial.begin(9600);
+  
+  // Initialize DHT sensor
+  dht.begin();
 
-  // Initialize BMP280
-  if (!bmp.begin(0x76)) {
-    Serial.println("BMP280 initialization failed. Check connections!");
-    while (1);
+  // Initialize BMP280 sensor with address 0x76
+  if (!bmp.begin(0x76)) {  // Explicitly use I2C address 0x76
+    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
+    while (1);  // Stop execution if the sensor is not found
   }
 
-  // Initialize MQ-9 sensor
-  MQ9.setRegressionMethod(1);  // Exponential regression (PPM = a * ratio^b)
-  MQ9.init();
-
-  Serial.print("Calibrating please wait.");
-  float calcR0 = 0;
-  for (int i = 1; i <= 10; i++) {
-    MQ9.update();  // Update data
-    calcR0 += MQ9.calibrate(RatioMQ9CleanAir);
-    Serial.print(".");
-  }
-  MQ9.setR0(calcR0 / 10);
-  Serial.println(" done!");
-
-  if (isinf(calcR0)) {
-    Serial.println("Error: R0 is infinite. Check wiring!");
-    while (1);
-  }
-  if (calcR0 == 0) {
-    Serial.println("Error: R0 is zero. Check wiring!");
-    while (1);
-  }
-
-  Serial.println("* MQ-9 Sensor Ready *");
+  // Set the LED pin as output
+  pinMode(ledPin1, OUTPUT);
 }
 
 void loop() {
-  // Read temperature and humidity from DHT11
-  DHT.read(DHT11_PIN);
-//  Serial.print("Temp: ");
-  Serial.print(DHT.temperature);
-//  Serial.print(" °C, Humidity: ");
-  Serial.println(",");
-  Serial.print(DHT.humidity);
-  Serial.println(",");
-//  Serial.println(" %");                                                                                                                                                                                                                                    
+  // Read values from MQ2 and MQ9 sensors (CO levels)
+  int mq2Value = analogRead(mq2Pin);
+  int mq9Value = analogRead(mq9Pin);
 
-  // Read gas concentration
-  MQ9.update();
-  MQ9.setA(599.65); MQ9.setB(-2.244);  // CO concentration model
-  float CO = MQ9.readSensor();
-  //Serial.print("CO Concentration: ");
-  Serial.print(CO);
-  Serial.println(",");
+  // Read temperature and humidity from DHT11 sensor
+  float temperature = dht.readTemperature();  // Celsius
+  float humidity = dht.readHumidity();        // Humidity in percentage
 
-  // Read temperature, pressure, and altitude from BMP280
-//  Serial.print("Temperature: ");
-//  Serial.print(bmp.readTemperature());
-//  Serial.println(" °C");
+  // Read pressure from BMP280 sensor
+  float pressure = bmp.readPressure() / 100.0F;  // Pressure in hPa (hectopascals)
+  float bmpTemperature = bmp.readTemperature();  // BMP280 sensor temperature in Celsius
 
-//  Serial.print("Pressure: ");
-  Serial.print(bmp.readPressure());  // Convert to hPa
-//  Serial.println(" hPa");
+  // Check if DHT readings are valid
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("Failed to read from DHT sensor!");
+  } else {
+    // Print the sensor readings for debugging
+    Serial.print("MQ2 Value (CO): ");
+    Serial.print(mq2Value);
+    
+Serial.println(",");
+    Serial.print("\t MQ9 Value (CO): ");
+    Serial.println(mq9Value);
 
-// */ Serial.print("Altitude: ");
-//  Serial.print(bmp.readAltitude(1013.25));  // Standard sea level pressure
-//  Serial.println(" m");
-  Serial.println();
-  delay(2000);  // Delay for 2 seconds
+Serial.println(",");
+
+
+    Serial.print("Temperature from DHT11: ");
+    Serial.print(temperature);
+
+    
+Serial.println(",");
+    Serial.print(" °C\t Humidity: ");
+    Serial.print(humidity);
+    Serial.println(" %");
+
+Serial.println(",");
+    // Print BMP280 sensor data
+    Serial.print("Pressure from BMP280: ");
+    Serial.print(pressure);
+    
+    Serial.println(",");
+    Serial.print(" hPa\t BMP280 Temperature: ");
+    Serial.print(bmpTemperature);
+    Serial.println(" °C");
+  }
+
+  // Check if the MQ2 and MQ9 sensor readings are equal or nearly equal for CO levels
+  if (abs(mq2Value - mq9Value) <= tolerance) {
+    // If the difference between values is within the tolerance, turn on the LED
+    digitalWrite(ledPin1, HIGH);
+  } else {
+    // Otherwise, turn off the LED
+    digitalWrite(ledPin1, LOW);
+  }
+
+  // Small delay for stability and sensor reading
+  delay(2000);  // Delay for 2 seconds before next loop iteration
 }
