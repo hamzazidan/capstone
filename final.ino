@@ -52,37 +52,37 @@ void loop() {
 
   // Check if DHT readings are valid
   if (isnan(temperature) || isnan(humidity)) {
-    Serial.println("Failed to read from DHT sensor!");
+    Serial.print("Failed to read from DHT sensor!");
   } else {
     // Print the sensor readings for debugging
-    Serial.print("MQ2 Value (CO): ");
+//    Serial.print("MQ2 Value (CO): ");
     Serial.print(mq2Value);
     
-Serial.println(",");
-    Serial.print("\t MQ9 Value (CO): ");
-    Serial.println(mq9Value);
+Serial.print(",");
+//    Serial.print("\t MQ9 Value (CO): ");
+    Serial.print(mq9Value);
 
-Serial.println(",");
+Serial.print(",");
 
 
-    Serial.print("Temperature from DHT11: ");
+//    Serial.print("Temperature from DHT11: ");
     Serial.print(temperature);
 
     
-Serial.println(",");
-    Serial.print(" °C\t Humidity: ");
+Serial.print(",");
+//    Serial.print(" °C\t Humidity: ");
     Serial.print(humidity);
-    Serial.println(" %");
+//    Serial.println(" %");
 
-Serial.println(",");
+Serial.print(",");
     // Print BMP280 sensor data
-    Serial.print("Pressure from BMP280: ");
-    Serial.print(pressure);
+//    Serial.print("Pressure from BMP280: ");
+    Serial.println(pressure);
     
-    Serial.println(",");
-    Serial.print(" hPa\t BMP280 Temperature: ");
-    Serial.print(bmpTemperature);
-    Serial.println(" °C");
+//    Serial.print(",");
+//    Serial.print(" hPa\t BMP280 Temperature: ");
+//    Serial.print(bmpTemperature);
+//    Serial.println(" °C");
   }
 
   // Check if the MQ2 and MQ9 sensor readings are equal or nearly equal for CO levels
